@@ -4,8 +4,14 @@ feedback =
   default_feedback:
     warning: ''
     suggestions: [
-      "Use a few words, avoid common phrases"
-      "No need for symbols, digits, or uppercase letters"
+      {
+        code: 'use_a_few_words',
+        message: 'Use a few words, avoid common phrases'
+      },
+      {
+        code: 'no_need_for_mixed_chars',
+        message: 'No need for symbols, digits, or uppercase letters'
+      }
     ]
 
   get_feedback: (score, sequence) ->
@@ -22,7 +28,10 @@ feedback =
     for match in sequence[1..]
       longest_match = match if match.token.length > longest_match.token.length
     feedback = @get_match_feedback(longest_match, sequence.length == 1)
-    extra_feedback = 'Add another word or two. Uncommon words are better.'
+    extra_feedback = {
+      code: 'add_another_word',
+      message: 'Add another word or two. Uncommon words are better.'
+    }
     if feedback?
       feedback.suggestions.unshift extra_feedback
       feedback.warning = '' unless feedback.warning?
@@ -40,77 +49,151 @@ feedback =
       when 'spatial'
         layout = match.graph.toUpperCase()
         warning = if match.turns == 1
-          'Straight rows of keys are easy to guess'
+          {
+            code: 'straight-rows',
+            message: 'Straight rows of keys are easy to guess'
+          }
         else
-          'Short keyboard patterns are easy to guess'
+          {
+            code: 'short-keyboard-patterns',
+            message: 'Short keyboard patterns are easy to guess'
+          }
         warning: warning
         suggestions: [
-          'Use a longer keyboard pattern with more turns'
+          {
+            code: 'use-longer-keyboard-pattern',
+            message: 'Use a longer keyboard pattern with more turns'
+          }
         ]
 
       when 'repeat'
         warning = if match.base_token.length == 1
-          'Repeats like "aaa" are easy to guess'
+          {
+            code: 'repeats-aaa',
+            message: 'Repeats like "aaa" are easy to guess'
+          }
         else
-          'Repeats like "abcabcabc" are only slightly harder to guess than "abc"'
+          {
+            code: 'repeats-abcabcabc',
+            message:
+              'Repeats like "abcabcabc" are only slightly harder to guess than "abc"'
+          }
         warning: warning
         suggestions: [
-          'Avoid repeated words and characters'
+          {
+            code: 'avoid-repeated-words',
+            message: 'Avoid repeated words and characters'
+          }
         ]
 
       when 'sequence'
-        warning: "Sequences like abc or 6543 are easy to guess"
+        warning: {
+          code: 'sequences-abc-6543',
+          message: 'Sequences like abc or 6543 are easy to guess'
+        }
         suggestions: [
-          'Avoid sequences'
+          {
+            code: 'avoid-sequences',
+            message: 'Avoid sequences'
+          }
         ]
 
       when 'regex'
         if match.regex_name == 'recent_year'
-          warning: "Recent years are easy to guess"
+          warning: {
+            code: 'recent-years',
+            message: 'Recent years are easy to guess'
+          }
           suggestions: [
-            'Avoid recent years'
-            'Avoid years that are associated with you'
+            {
+              code: 'avoid-recent-years',
+              message: 'Avoid recent years'
+            },
+            {
+              code: 'avoid-personnal-years',
+              message: 'Avoid years that are associated with you'
+            }
           ]
 
       when 'date'
-        warning: "Dates are often easy to guess"
+        warning: {
+          code: 'dates',
+          message: 'Dates are often easy to guess'
+        }
         suggestions: [
-          'Avoid dates and years that are associated with you'
+          {
+            code: 'avoid-personnal-dates-years',
+            message: 'Avoid dates and years that are associated with you'
+          }
         ]
 
   get_dictionary_match_feedback: (match, is_sole_match) ->
     warning = if match.dictionary_name == 'passwords'
       if is_sole_match and not match.l33t and not match.reversed
         if match.rank <= 10
-          'This is a top-10 common password'
+          {
+            code: 'top-10',
+            message: 'This is a top-10 common password'
+          }
         else if match.rank <= 100
-          'This is a top-100 common password'
+          {
+            code: 'top-100',
+            message: 'This is a top-100 common password'
+          }
         else
-          'This is a very common password'
+          {
+            code: 'very-common',
+            message: 'This is a very common password'
+          }
       else if match.guesses_log10 <= 4
-        'This is similar to a commonly used password'
+        {
+          code: 'similar-common',
+          message: 'This is similar to a commonly used password'
+        }
     else if match.dictionary_name == 'english_wikipedia'
       if is_sole_match
-        'A word by itself is easy to guess'
+        {
+          code: 'word',
+          message: 'A word by itself is easy to guess'
+        }
     else if match.dictionary_name in ['surnames', 'male_names', 'female_names']
       if is_sole_match
-        'Names and surnames by themselves are easy to guess'
+        {
+          code: 'names-surnames',
+          message: 'Names and surnames by themselves are easy to guess'
+        }
       else
-        'Common names and surnames are easy to guess'
+        {
+          code: 'common-names-surnames',
+          message: 'Common names and surnames are easy to guess'
+        }
     else
       ''
 
     suggestions = []
     word = match.token
     if word.match(scoring.START_UPPER)
-      suggestions.push "Capitalization doesn't help very much"
+      suggestions.push {
+        code: 'capitalization',
+        message: "Capitalization doesn't help very much"
+      }
     else if word.match(scoring.ALL_UPPER) and word.toLowerCase() != word
-      suggestions.push "All-uppercase is almost as easy to guess as all-lowercase"
+      suggestions.push {
+        code: 'all-uppercase',
+        message: 'All-uppercase is almost as easy to guess as all-lowercase'
+      }
 
     if match.reversed and match.token.length >= 4
-      suggestions.push "Reversed words aren't much harder to guess"
+      suggestions.push {
+        code: 'reversed-words',
+        message: "Reversed words aren't much harder to guess"
+      }
     if match.l33t
-      suggestions.push "Predictable substitutions like '@' instead of 'a' don't help very much"
+      suggestions.push {
+        code: 'predictable-substitutions',
+        message:
+          "Predictable substitutions like '@' instead of 'a' don't help very much"
+      }
 
     result =
       warning: warning
